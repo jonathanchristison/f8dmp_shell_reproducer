@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    JBoss, Home of Professional Open Source.
+    Copyright 2017 Red Hat, Inc., and individual contributors
+    as indicated by the @author tags.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+<name>Reproducer</name>
+<groupId>foo</groupId>
+<artifactId>reproducer</artifactId>
+<packaging>pom</packaging>
+<version>1.0-SNAPSHOT</version>
+
+
+    <properties>
+        <docker.image.from>centos:7</docker.image.from>
+        <docker.image.version>foo</docker.image.version>
+        <docker.image.name>shell-bug</docker.image.name>
+    </properties>
+
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <version>0.26.0</version>
+                <configuration>
+                    <autoPull>on</autoPull>
+                    <imagePullPolicy>Never</imagePullPolicy>
+                    <images>
+                        <!-- Base image --> 
+                        <image>
+                            <name>${docker.image.name}</name>
+                            <build>
+                                <dockerFileDir>${project.basedir}/root/</dockerFileDir>
+                                <optimise>true</optimise>
+                                <tags>
+                                    <tag>${docker.image.version}</tag>
+                                    <tag>${project.version}</tag>
+                                </tags>
+                                <labels>
+                                    <test>testval</test>
+                                </labels>
+                                <!-- Make prod-docs-generator available to 
+                                     image, (lives in /home/jenkins/bin) -->
+                            </build>
+                        </image>
+                        <image>
+                            <name>${docker.image.name}-echo</name>
+                            <build>
+                                <user>jenkins</user>
+                                <from>${docker.image.name}</from>
+                                <entryPoint>
+                                    <shell>echo</shell>
+                                </entryPoint>
+                            </build>
+                        </image>
+                    </images>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>remove-images</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>remove</goal>
+                        </goals>
+                        <configuration>
+                            <images>
+                                <image>
+                                    <name>${docker.image.name}:${docker.image.version}</name>
+                                </image>
+                                <image>
+                                    <name>${docker.image.name}</name>
+                                </image>
+                                <image>
+                                    <name>${docker.image.name}-echo:${docker.image.version}</name>
+                                </image>
+                                <image>
+                                    <name>${docker.image.name}-echo</name>
+                                </image>
+                            </images>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>build-docker-image</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>push-docker-image</id>
+                        <goals>
+                            <goal>push</goal>
+                        </goals>
+                        <phase>install</phase>
+                        <configuration>
+                            <skipPush>${docker.skipPush}</skipPush>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
